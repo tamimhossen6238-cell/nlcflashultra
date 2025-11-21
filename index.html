@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- SECURITY POLICY: Blocks external attacks & malicious scripts -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net; img-src 'self' data: https:; frame-src 'self' blob:;">
+
+    <!-- Performance Preconnects -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    
+    <title>NLC | Pro (Cloud)</title>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Encryption Library (Deferred for speed) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" defer></script>
+    
+    <script>
+        // Fast LocalStorage Access
+        let initialSettings = { dark: false, viewMode: 'grid', size: 'medium' };
+        try {
+            const stored = localStorage.getItem('ls_settings');
+            if (stored) initialSettings = JSON.parse(stored);
+        } catch (e) { console.warn("Local storage blocked"); }
+
+        if (initialSettings.dark) {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    
+    <style>
+        /* CSS variables */
+        :root {
+            --bg-body: #f0f2f5;
+            --bg-card: #ffffff;
+            --text-main: #1e293b; 
+            --text-sub: #64748b;
+            --border: #e2e8f0;
+            --input-bg: #f8fafc;
+            --input-border: #e2e8f0;
+            --primary: #2563eb; 
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --error: #ef4444;
+            --loader-bg: var(--bg-body); 
+            --loader-text: var(--text-main);
+            --logo-n: #1e293b;
+            --logo-l: #3b82f6;
+            --logo-c: #10b981;
+            --card-h: 130px;
+            --card-w-min: 150px;
+            --font-title: 14px;
+            --icon-size: 24px;
+            --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --shadow-auth: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* DARK MODE */
+        html.dark-mode {
+            --bg-body: #000000; 
+            --bg-card: #0a0a0a; 
+            --text-main: #f8fafc; 
+            --text-sub: #94a3b8;
+            --border: #222222; 
+            --input-bg: #111111;
+            --input-border: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #60a5fa;
+            --loader-bg: var(--bg-body);
+            --loader-text: var(--text-main);
+            --logo-n: #f8fafc;
+            --shadow-auth: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+        }
+        
+        html.dark-mode .auth-box {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        html.dark-mode #authScreen {
+             background-color: #000000;
+             background-image: none; 
+        }
+        
+        /* SIZES */
+        html.size-small body { --card-h: 100px; --card-w-min: 110px; --font-title: 12px; --icon-size: 18px; }
+        html.size-medium body { --card-h: 130px; --card-w-min: 150px; --font-title: 14px; --icon-size: 24px; }
+        html.size-large body { --card-h: 170px; --card-w-min: 190px; --font-title: 18px; --icon-size: 32px; }
+
+        html.view-list .grid { grid-template-columns: 1fr !important; gap: 10px; }
+        html.view-list .card { height: auto; flex-direction: row; justify-content: space-between; text-align: left; align-items: center; }
+        html.view-list .card-title { margin: 0; flex: 1; -webkit-line-clamp: 1; }
+        
+        html.view-list.size-small .card { padding: 8px 12px; }
+        html.view-list.size-small .card-icon { font-size: 14px; margin: 0 10px 0 0; }
+        html.view-list.size-medium .card { padding: 16px 20px; }
+        html.view-list.size-medium .card-icon { font-size: 20px; margin: 0 15px 0 0; }
+        html.view-list.size-large .card { padding: 25px 30px; }
+        html.view-list.size-large .card-icon { font-size: 32px; margin: 0 25px 0 0; }
+
+        html, body { 
+            width: 100%; height: 100%; margin: 0; padding: 0; overflow-x: hidden;
+            background-color: var(--bg-body);
+        }
+        
+        * { box-sizing: border-box; outline: none; font-family: 'Inter', 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            color: var(--text-main); 
+            transition: background-color 0.2s;
+            min-height: 100vh;
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+        
+        /* --- AUTH SCREEN --- */
+        #authScreen {
+            position: fixed; inset: 0; 
+            background: var(--bg-body);
+            background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            z-index: 6000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.3s ease;
+            will-change: opacity;
+        }
+        
+        html:not(.dark-mode) #authScreen {
+             background-color: #f3f4f6;
+             background-image: radial-gradient(at 40% 20%, hsla(28,100%,74%,0.1) 0px, transparent 50%),
+             radial-gradient(at 80% 0%, hsla(189,100%,56%,0.1) 0px, transparent 50%),
+             radial-gradient(at 0% 50%, hsla(340,100%,76%,0.1) 0px, transparent 50%);
+        }
+
+        .auth-box {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px; 
+            border-radius: 20px; 
+            border: 1px solid rgba(255,255,255,0.5);
+            text-align: center; 
+            max-width: 360px; width: 85%;
+            box-shadow: var(--shadow-auth);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative; overflow: hidden; will-change: transform, opacity;
+        }
+        
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .auth-input-group { text-align: left; margin-bottom: 12px; }
+        .auth-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--text-sub); margin-left: 4px; }
+        .auth-input { width: 100%; padding: 12px 15px; border-radius: 10px; border: 2px solid var(--input-border); background: var(--input-bg); color: var(--text-main); font-size: 15px; transition: border-color 0.2s; }
+        .auth-input:focus { border-color: var(--primary); background: var(--bg-card); }
+        .auth-input.error { border-color: var(--error); background: rgba(239, 68, 68, 0.05); animation: shake 0.3s; }
+
+        .btn-primary {
+            width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 15px;
+            cursor: pointer; transition: transform 0.1s, background-color 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .btn-success { background: var(--success) !important; }
+
+        .auth-switch-link { margin-top: 15px; font-size: 13px; color: var(--text-sub); }
+        .auth-switch-link b { cursor: pointer; color: var(--primary); }
+        
+        .error-msg { color: var(--error); font-size: 12px; margin-top: 5px; font-weight: 600; display: none; text-align: left; margin-left: 4px; }
+        .error-msg.show { display: block; animation: fadeInUp 0.1s ease-out; }
+
+        .user-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--logo-l); color: white; display: flex; justify-content: center; align-items: center; font-weight: bold;}
+
+        /* --- CUSTOM BRAND LOADER --- */
+        #appLoader {
+            position: fixed; inset: 0; background-color: var(--loader-bg); color: var(--loader-text);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5000;
+            transition: opacity 0.3s ease; will-change: opacity;
+        }
+        
+        .nlc-loader-wrapper {
+            position: relative; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px;
+        }
+
+        .nlc-logo-text { font-size: 28px; font-weight: 900; letter-spacing: -1px; z-index: 2; animation: pulseText 2s ease-in-out infinite; }
+        
+        .spinner-ring {
+            position: absolute; inset: 0; border-radius: 50%; border: 4px solid transparent;
+            border-top-color: var(--logo-l); border-right-color: var(--logo-c); border-bottom-color: var(--logo-l); 
+            animation: spinRing 1.2s linear infinite; will-change: transform;
+        }
+        
+        @keyframes spinRing { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseText { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.95); } }
+
+        /* HEADER & APP */
+        header { 
+            background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 12px 15px; position: sticky; top: 0; z-index: 100; 
+            display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-soft); 
+        }
+        .brand-wrapper { display: flex; align-items: center; gap: 8px; }
+        .brand { font-weight: 900; font-size: 22px; letter-spacing: -1px; cursor: default; line-height: 1;}
+        .l-n { color: var(--logo-n); } .l-l { color: var(--logo-l); } .l-c { color: var(--logo-c); }
+        .vault-trigger { font-size: 18px; color: var(--text-sub); cursor: pointer; padding: 5px; border-radius: 50%; display: flex; align-items: center; }
+        .search-wrapper { flex: 1; max-width: 500px; margin-left: auto; margin-right: 5px; }
+        .search-input { width: 100%; background: var(--input-bg); border: 1px solid var(--input-border); padding: 8px 12px; border-radius: 8px; font-size: 14px; color: var(--text-main); transition: 0.2s; text-align: center; user-select: text; }
+        .search-input:focus { background: var(--bg-card); border-color: var(--logo-l); text-align: left; }
+        .actions { display: flex; gap: 5px; align-items: center; }
+        .btn-icon { width: 34px; height: 34px; border-radius: 8px; border: none; background: transparent; color: var(--text-main); font-size: 15px; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .btn-icon:hover { background: var(--input-bg); }
+        
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 15px; padding-bottom: 80px; }
+        
+        .grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-w-min), 1fr)); gap: 12px; 
+            contain: content; content-visibility: auto; contain-intrinsic-size: 1px 130px;
+        }
+        
+        .card { 
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; height: var(--card-h); padding: 15px; 
+            cursor: pointer; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
+            transition: transform 0.1s; touch-action: manipulation; 
+            transform: translateZ(0); will-change: transform; box-shadow: var(--shadow-soft); 
+        }
+        .card:active { transform: scale(0.96) translateZ(0); }
+        .card-icon { font-size: var(--icon-size); margin-bottom: 8px; color: var(--text-main); opacity: 0.8; }
+        .card-title { font-size: var(--font-title); font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25;}
+        
+        .menu-dropdown { position: absolute; top: 60px; right: 15px; width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 8px; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 200; max-height: 80vh; overflow-y: auto; will-change: transform, opacity; }
+        .menu-dropdown.active { display: flex; animation: fadeInUp 0.15s ease-out; }
+        .menu-item { padding: 10px; font-size: 13px; cursor: pointer; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; color: var(--text-main);}
+        .menu-item:hover { background: var(--input-bg); }
+        .menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
+        .submenu-label { font-size: 10px; font-weight: bold; color: var(--text-sub); padding: 4px 10px; text-transform: uppercase; }
+        
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px); transition: opacity 0.15s; will-change: opacity;}
+        .modal.active { display: flex; }
+        .modal-box { background: var(--bg-card); width: 90%; max-width: 400px; padding: 20px; border-radius: 16px; border: 1px solid var(--border); transition: all 0.2s ease; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3); will-change: transform;}
+        .modal-box.expanded { max-width: 100vw; width: 100%; height: 100%; border-radius: 0; display: flex; flex-direction: column; padding: 0; border: none; }
+        .modal-box.expanded form { display: flex; flex-direction: column; height: 100%; padding: 20px; }
+        .modal-box.expanded textarea { flex: 1; height: auto !important; margin-bottom: 0; }
+        
+        .fullscreen { width: 100%; height: 100%; max-width: none; border-radius: 0; padding: 0; display: flex; flex-direction: column; border: none; }
+        
+        input:not(.auth-input), select, textarea { width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); font-size: 14px; margin-bottom: 15px; user-select: text; }
+        
+        /* --- NOTE VIEW PRO DESIGN --- */
+        .note-view-header {
+            padding: 20px 25px; 
+            display: flex;
+            align-items: flex-start; 
+            justify-content: space-between;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .note-info-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column; 
+            gap: 6px;
+            margin-right: 15px;
+        }
+
+        #noteViewTitle {
+            font-size: 22px; 
+            font-weight: 700;
+            border: none;
+            background: transparent;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            line-height: 1.3;
+        }
+        #noteViewTitle::placeholder { color: var(--text-sub); opacity: 0.5; }
+
+        #noteViewDate {
+            font-size: 12px;
+            color: var(--text-sub);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .note-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; margin-top: 2px;}
+        .note-btn { background: var(--text-main); color: var(--bg-card); border: none; padding: 0; border-radius: 50%; cursor: pointer; font-size: 14px; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; }
+        .note-btn.done-tick { background: var(--logo-c); color: white; }
+        .note-btn.back-arrow { background: var(--input-bg); color: var(--text-main); }
+        
+        /* --- VAULT HEADER FIX --- */
+        .vault-header {
+            background: #000000;
+            border-bottom: 1px solid #333;
+            padding: 12px 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        html:not(.dark-mode) .vault-header {
+            background: #1e293b; 
+        }
+
+        #runnerModal .modal-box { padding: 0; background: #000; }
+        #fileTypeSelection { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px; }
+        .type-btn { flex: 1; padding: 12px 8px; border-radius: 10px; border: 2px solid var(--border); background: var(--input-bg); color: var(--text-sub); text-align: center; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: 0.1s; }
+        .type-btn.active { border-color: var(--logo-l); background: var(--bg-card); color: var(--logo-l); transform: scale(1.02); }
+        
+        .help-content { max-height: 60vh; overflow-y: auto; text-align: left; font-size: 14px; color: var(--text-main); line-height: 1.6; padding-right: 5px;}
+        .help-section { margin-bottom: 15px; }
+        .help-title { font-weight: bold; margin-bottom: 5px; color: var(--logo-l); font-size: 15px; }
+        .help-list { list-style: none; padding-left: 5px; }
+        .help-list li { margin-bottom: 8px; position: relative; padding-left: 15px; }
+        .help-list li::before { content: "•"; position: absolute; left: 0; color: var(--text-sub); }
+        
+        /* --- CREATOR FOOTER --- */
+        .creator-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-sub);
+            font-family: 'Courier New', monospace; 
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+        
+        #loadTrigger { height: 20px; width: 100%; margin-top: 20px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="authScreen" class="hidden">
+        <div class="auth-box" id="authBox">
+            <div class="brand" style="margin-bottom: 8px; font-size: 42px;"><span class="l-n">N</span><span class="l-l">L</span><span class="l-c">C</span></div>
+            <h2 id="authTitle" style="color: var(--text-main); margin-bottom: 5px; font-size: 22px;">Welcome Back</h2>
+            <p style="color: var(--text-sub); margin-bottom: 25px; font-size: 13px;">Manage your cloud files securely</p>
+            
+            <div class="auth-input-group">
+                <label class="auth-label">Email Address</label>
+                <input type="email" id="authEmail" class="auth-input" placeholder="name@example.com" required oninput="window.clearAuthError()" autocomplete="off" autocorrect="off" autocapitalize="off">
+            </div>
+            
+            <div class="auth-input-group">
+                <label class="auth-label">Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="authPassword" class="auth-input" placeholder="••••••••" required style="padding-right: 40px;" oninput="window.clearAuthError()" autocomplete="new-password">
+                    <span id="passwordToggle" onclick="window.togglePasswordVisibility()" 
+                        style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-sub); padding: 5px;">
+                        <i class="fas fa-eye-slash"></i>
+                    </span>
+                </div>
+                <div id="authErrorMsg" class="error-msg">Incorrect Password</div>
+            </div>
+            
+            <div style="text-align: right; margin-bottom: 20px;">
+                <b style="cursor: pointer; color: var(--primary); font-size: 12px; font-weight: 600;" onclick="window.openForgotPasswordModal()">Forgot Password?</b>
+            </div>
+            
+            <button id="mainAuthBtn" class="btn-primary" onclick="window.handleAuthAction()">
+                <span>Login</span> <i class="fas fa-arrow-right"></i>
+            </button>
+            
+            <div class="auth-switch-link">
+                <span id="authSwitchText">New here?</span> 
+                <b id="authSwitchBtn" onclick="window.toggleAuthMode()">Create Account</b>
+            </div>
+        </div>
+    </div>
+
+    <div id="appLoader">
+        <div class="nlc-loader-wrapper">
+            <div class="spinner-ring"></div>
+            <div class="nlc-logo-text">
+                <span class="l-n">N</span><span class="l-l">L</span><span class="l-c">C</span>
+            </div>
+        </div>
+        <p style="font-size: 14px; color: var(--text-sub); font-weight: 500; letter-spacing: 1px;">Loading...</p>
+    </div>
+
+    <div id="mainApp" class="hidden">
+        <header>
+            <div class="brand-wrapper"><div class="brand"><span class="l-n">N</span><span class="l-l">L</span><span class="l-c">C</span></div><div class="vault-trigger" onclick="window.openAuthModal()"><i class="fas fa-shield-alt"></i></div></div>
+            <div class="search-wrapper"><input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off"></div>
+            <div class="actions">
+                <button class="btn-icon" onclick="window.openEditor(null, 'main')" title="Add New"><i class="fas fa-plus"></i></button>
+                <button class="btn-icon" id="menuBtn" title="Menu"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+
+            <div class="menu-dropdown" id="menuDropdown">
+                <div class="menu-item user-profile" style="background: var(--input-bg); margin-bottom: 5px; padding: 5px 10px;">
+                    <div id="userAvatar" class="user-avatar"><i class="fas fa-user"></i></div>
+                    <div style="flex:1; overflow:hidden;">
+                        <div id="userName" style="font-size:12px; font-weight:bold;">User</div>
+                        <div style="font-size:10px; color:var(--text-sub);">
+                            <span id="connectionStatus">Online</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.openManager('main')">File Manager <i class="fas fa-folder-open"></i></div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.toggleTheme()"><span id="themeToggleText">Dark Mode</span> <i class="fas fa-moon"></i></div>
+                <div class="menu-divider"></div>
+                <div class="submenu-label">View Mode</div>
+                <div class="menu-item" onclick="window.setView('grid')">Grid <i class="fas fa-th"></i></div>
+                <div class="menu-item" onclick="window.setView('list')">List <i class="fas fa-list"></i></div>
+                <div class="menu-divider"></div>
+                <div class="submenu-label">Card Size</div>
+                <div class="menu-item" onclick="window.setSize('small')">Small</div>
+                <div class="menu-item" onclick="window.setSize('medium')">Normal</div>
+                <div class="menu-item" onclick="window.setSize('large')">Large</div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.openHelp()" style="color: var(--logo-l); font-weight: 600;">User Guide <i class="fas fa-info-circle"></i></div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.logout()" style="color: var(--error);">Logout <i class="fas fa-sign-out-alt"></i></div>
+            </div>
+        </header>
+        <div class="container">
+            <div class="grid" id="fileGrid"></div>
+            <div id="loadTrigger"></div>
+        </div>
+    </div>
+
+    <div id="vaultView" class="hidden">
+        <header class="vault-header">
+            <div class="brand"><span style="color:white">V</span><span style="color:#3b82f6">LT</span></div>
+            <div class="actions" style="margin-left: auto;">
+                <button class="btn-icon" style="color: white;" onclick="window.openEditor(null, 'vault')"><i class="fas fa-plus"></i></button>
+                <button class="btn-icon" style="color: white;" onclick="window.openManager('vault')"><i class="fas fa-cog"></i></button>
+                <button class="btn-icon" style="color: #ef4444;" onclick="window.exitVault()"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+        <div class="container">
+            <div class="grid" id="vaultGrid"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="editorModal">
+        <div class="modal-box">
+            <h3 style="margin-bottom: 15px;">New Item</h3>
+            <form id="fileForm" autocomplete="off">
+                <input type="text" style="display:none" name="fakeusernameremembered">
+                <input type="password" style="display:none" name="fakepasswordremembered">
+                
+                <input type="hidden" id="editId">
+                <input type="text" id="fileName" placeholder="Name" required autocomplete="off" autocorrect="off" spellcheck="false">
+                <input type="hidden" id="fileType" value="link">
+                <div id="fileTypeSelection">
+                    <div class="type-btn active" data-type="link" onclick="window.setType('link')"><i class="fas fa-link"></i> Link</div>
+                    <div class="type-btn" data-type="note" onclick="window.setType('note')"><i class="fas fa-align-left"></i> Note</div>
+                    <div class="type-btn" data-type="code" onclick="window.setType('code')"><i class="fas fa-code"></i> Code</div>
+                </div>
+                <input type="url" id="fileUrl" placeholder="https://" autocomplete="off">
+                <textarea id="fileContent" placeholder="Write content..." style="height: 100px; display: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-form-type="other"></textarea>
+                <button type="submit" class="btn-primary">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="noteModal">
+        <div class="modal-box fullscreen" style="background: var(--bg-body);">
+            <div class="note-view-header">
+                <div class="note-info-wrapper">
+                    <input type="text" id="noteViewTitle" placeholder="Title goes here..." autocomplete="off">
+                    <span id="noteViewDate">No Date</span> 
+                </div>
+                <div class="note-actions">
+                    <button onclick="window.saveAndCloseNote()" class="note-btn done-tick"><i class="fas fa-check"></i></button>
+                    <button onclick="window.goBack()" class="note-btn back-arrow"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <textarea id="noteViewContent" style="flex: 1; padding: 20px; border: none; background: transparent; resize: none; font-size: 16px; line-height: 1.6; color: var(--text-main);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+            <input type="hidden" id="noteViewId">
+        </div>
+    </div>
+
+    <div class="modal" id="runnerModal"><div class="modal-box fullscreen" style="background: #fff;"><iframe id="codeFrame" style="border:none; width:100%; height:100%; background: white;"></iframe></div></div>
+    <div class="modal" id="managerModal"><div class="modal-box"><h3 style="margin-bottom: 15px;">Cloud Manager</h3><div id="fileList" style="max-height: 300px; overflow-y: auto;"></div><button onclick="window.goBack()" class="btn-primary" style="margin-top: 15px; background: var(--text-sub);">Close Manager</button></div></div>
+    
+    <div class="modal" id="helpModal">
+        <div class="modal-box" style="max-width: 500px;">
+            <h3 style="margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">ব্যবহার বিধি (User Guide)</h3>
+            <div class="help-content">
+                <div class="help-section">
+                    <div class="help-title"><i class="fas fa-cloud"></i> ১. ক্লাউড ও অফলাইন</div>
+                    <ul class="help-list">
+                        <li>**অটোমেটিক সেভ:** আপনার সব ফাইল ইন্টারনেটে সেভ থাকে।</li>
+                        <li>**অফলাইন মোড:** ইন্টারনেট না থাকলেও অ্যাপ কাজ করবে। নেট কানেক্ট হলে অটো সিঙ্ক হবে।</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <div class="help-title"><i class="fas fa-folder-open"></i> ২. ফাইল ও ফোল্ডার</div>
+                    <ul class="help-list">
+                        <li>**Link:** যেকোনো ওয়েবসাইটের লিংক সেভ করতে।</li>
+                        <li>**Note:** গুরুত্বপূর্ণ লেখা বা ডায়েরি হিসেবে ব্যবহারের জন্য।</li>
+                        <li>**Code:** ছোট কোড রান করে দেখার জন্য (HTML/JS)।</li>
+                        <li>**Move:** ফাইল ভল্টে পাঠাতে 'File Manager' ব্যবহার করুন।</li>
+                    </ul>
+                </div>
+                <div class="help-section">
+                    <div class="help-title"><i class="fas fa-user-secret"></i> ৩. সিকিউর ভল্ট (Vault)</div>
+                    <p style="font-size: 13px; color: var(--text-sub); margin-bottom: 8px;">
+                        ভল্ট হলো আপনার ব্যক্তিগত লকার। এখানে ফাইল রাখতে ৪-সংখ্যার গোপন পিন সেট করতে হয়।
+                    </p>
+                    <div style="background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--error); padding: 10px; border-radius: 4px;">
+                        <p style="color: var(--error); font-weight: bold; font-size: 13px; margin: 0;">
+                            <i class="fas fa-exclamation-triangle"></i> অত্যন্ত গুরুত্বপূর্ণ:
+                        </p>
+                        <p style="font-size: 12px; color: var(--text-main); margin-top: 5px; line-height: 1.5;">
+                            ভল্ট সেটআপ করার সময় যে <b>"Security Question"</b> এর উত্তর দেবেন, তা অবশ্যই মনে রাখবেন। যদি পিন ভুলে যান, এই উত্তর ছাড়া পিন রিসেট করা অসম্ভব। আমরা আপনার ডেটা এনক্রিপ্ট করি, তাই আমরাও এটি পুনরুদ্ধার করতে পারব না।
+                        </p>
+                    </div>
+                </div>
+                <div class="creator-footer">
+                    Created by Tamim
+                </div>
+            </div>
+            <button onclick="window.goBack()" class="btn-primary" style="margin-top: 20px; background: var(--text-sub);" id="helpModalCloseBtn">Close Guide</button> 
+        </div>
+    </div>
+    
+    <div class="modal" id="authModal"><div class="modal-box" style="text-align: center;"><i class="fas fa-lock" style="font-size: 30px; margin-bottom: 15px; color: var(--logo-l);"></i><div id="setupView" class="hidden"><p style="margin-bottom: 10px; font-size: 14px; color: var(--text-sub);">Security Question:<br><b>What is your favourite food?</b></p><input type="text" id="setupAnswer" placeholder="Answer" autocomplete="off"><input type="password" id="setupPin" maxlength="4" placeholder="••••" style="text-align:center; letter-spacing:5px; font-size:20px;" inputmode="numeric" autocomplete="off"><button onclick="window.setupVault()" class="btn-primary">Set PIN & Sync</button></div><div id="loginView" class="hidden"><input type="password" id="loginPin" maxlength="4" placeholder="••••" style="text-align:center; letter-spacing:5px; font-size:24px;" inputmode="numeric" autocomplete="off"><button onclick="window.loginVault()" class="btn-primary">Unlock Cloud Vault</button><button onclick="window.showResetView()" style="background:none; border:none; color:var(--text-sub); margin-top:10px; font-size:12px; cursor:pointer;">Forgot?</button></div><div id="resetView" class="hidden"></div></div></div>
+    <div class="modal" id="messageModal"><div class="modal-box" style="text-align: center;"><p id="messageText" style="font-size: 16px; margin-bottom: 20px;"></p><button onclick="document.getElementById('messageModal').classList.remove('active'); window.goBack();" class="btn-primary" style="width: 50%; margin: 0 auto;">OK</button></div></div>
+    <div class="modal" id="confirmModal"><div class="modal-box" style="text-align: center;"><p id="confirmText" style="font-size: 16px; margin-bottom: 20px;"></p><div style="display: flex; gap: 10px;"><button id="confirmYesBtn" class="btn-primary" style="background: var(--logo-l); flex: 1;">Yes</button><button onclick="document.getElementById('confirmModal').classList.remove('active'); window.goBack();" class="btn-primary" style="background: var(--text-sub); flex: 1;">Cancel</button></div></div></div>
+    <div class="modal" id="copyModal"><div class="modal-box"><h3 style="margin-bottom: 15px;">Copy Content</h3><p style="font-size: 14px; color: var(--text-sub); margin-bottom: 15px;">Do you want to copy this content?</p><textarea id="copyContentArea" readonly style="height: 100px; font-size: 12px; margin-bottom: 15px; user-select: text;"></textarea><button onclick="window.performCopy()" class="btn-primary" style="background: var(--logo-c);">Copy</button><button onclick="document.getElementById('copyModal').classList.remove('active'); window.goBack();" class="btn-primary" style="background: var(--text-sub); margin-top: 10px;">Close</button></div></div>
+
+    <div class="modal" id="forgotPasswordModal">
+        <div class="modal-box" style="text-align: center;">
+            <i class="fas fa-key" style="font-size: 30px; margin-bottom: 15px; color: var(--logo-l);"></i>
+            <h3 style="margin-bottom: 15px;">Reset Password</h3>
+            <p style="margin-bottom: 15px; font-size: 14px; color: var(--text-sub);">Enter your email to receive a password reset link.</p>
+            <input type="email" id="resetEmail" class="auth-input" placeholder="Email Address" required autocomplete="off">
+            <button id="sendResetBtn" class="btn-primary" style="margin-top: 15px;" onclick="window.sendPasswordResetEmail()">Send Reset Link</button>
+            <button onclick="window.goBack()" style="background:none; border:none; color:var(--text-sub); margin-top:10px; font-size:12px; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged,
+            sendPasswordResetEmail
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCaxYd2TgiNhus3w676wgFzYwnHeYMHVCs",
+            authDomain: "nlc-44777.firebaseapp.com",
+            projectId: "nlc-44777",
+            storageBucket: "nlc-44777.firebasestorage.app",
+            messagingSenderId: "143310032996",
+            appId: "1:143310032996:web:eed0e533f31c98a8becf71",
+            measurementId: "G-WPNT8RE3EM"
+        };
+
+        let app, auth, db;
+        let files = [];
+        let vaultFiles = [];
+        let vaultSettings = { pin: null, answer: null };
+        let vaultSettingsUnsub = null;
+        let settings = initialSettings;
+        let editContext = 'main'; 
+        let activeNoteContext = 'main';
+        let currentUser = null;
+        let fileUnsub = null;
+        let vaultUnsub = null;
+        let isLoginMode = true;
+        let displayLimit = 50;
+        let filteredFiles = [];
+        let currentFilter = "";
+        let isSigningUp = false; 
+
+        // --- ENCRYPTION HELPERS (Safe & Lazy) ---
+        const encryptData = (text, pin) => {
+            if (!pin || !window.CryptoJS) return text;
+            try { return CryptoJS.AES.encrypt(text, String(pin)).toString(); } 
+            catch (e) { console.error(e); return text; }
+        };
+
+        const decryptData = (cipherText, pin) => {
+            if (!pin || !window.CryptoJS) return cipherText;
+            try {
+                const bytes = CryptoJS.AES.decrypt(cipherText, String(pin));
+                const originalText = bytes.toString(CryptoJS.enc.Utf8);
+                return originalText || cipherText;
+            } catch (e) { return cipherText; }
+        };
+
+        // --- SAFETY TIMEOUT ---
+        setTimeout(() => {
+            const loader = document.getElementById('appLoader');
+            const authScreen = document.getElementById('authScreen');
+            if (!loader.classList.contains('hidden') && !currentUser) {
+                loader.classList.add('hidden');
+                authScreen.classList.remove('hidden');
+            }
+        }, 2500);
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            enableIndexedDbPersistence(db).catch((err) => {
+                console.warn("Persistence issue:", err.code);
+            });
+
+            onAuthStateChanged(auth, (user) => {
+                const authScreen = document.getElementById('authScreen');
+                const loader = document.getElementById('appLoader');
+
+                if (user) {
+                    currentUser = user;
+                    const name = document.getElementById('userName');
+                    const avatar = document.getElementById('userAvatar');
+                    if(name) name.textContent = user.email;
+                    if(avatar) avatar.innerHTML = user.email.charAt(0).toUpperCase();
+                    
+                    updateConnectionStatus();
+
+                    if (isSigningUp) {
+                        setTimeout(() => {
+                            window.showMandatoryGuide();
+                            initDataListeners(user.uid);
+                        }, 1200); 
+                    } else {
+                        // Optimistic UI: Hide Auth immediately
+                        authScreen.classList.add('hidden');
+                        loader.classList.remove('hidden'); 
+                        initDataListeners(user.uid);
+                    }
+                } else {
+                    currentUser = null;
+                    const btn = document.getElementById('mainAuthBtn');
+                    if(btn) {
+                        btn.disabled = false;
+                        btn.classList.remove('btn-success');
+                        if(isLoginMode) btn.innerHTML = '<span>Login</span> <i class="fas fa-arrow-right"></i>';
+                    }
+                    authScreen.classList.remove('hidden');
+                    document.getElementById('mainApp').classList.add('hidden');
+                    loader.classList.add('hidden');
+                }
+            });
+            
+        } catch(e) {
+            console.error("Firebase Error:", e);
+            document.getElementById('appLoader').classList.add('hidden');
+            document.getElementById('authScreen').classList.remove('hidden');
+        }
+
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        function updateConnectionStatus() {
+            const statusEl = document.getElementById('connectionStatus');
+            if(navigator.onLine) {
+                statusEl.textContent = "Online";
+                statusEl.style.color = "var(--success)";
+            } else {
+                statusEl.textContent = "Offline (Saved Locally)";
+                statusEl.style.color = "var(--text-sub)";
+            }
+        }
+
+        window.toggleAuthMode = () => {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('authTitle');
+            const mainBtn = document.getElementById('mainAuthBtn');
+            const switchText = document.getElementById('authSwitchText');
+            const switchBtn = document.getElementById('authSwitchBtn');
+            window.clearAuthError();
+            
+            const box = document.querySelector('.auth-box');
+            box.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                if(isLoginMode) {
+                    title.textContent = "Welcome Back";
+                    mainBtn.innerHTML = '<span>Login</span> <i class="fas fa-arrow-right"></i>';
+                    switchText.textContent = "New here?";
+                    switchBtn.textContent = "Create Account";
+                } else {
+                    title.textContent = "Create Account";
+                    mainBtn.innerHTML = '<span>Sign Up</span> <i class="fas fa-user-plus"></i>';
+                    switchText.textContent = "Already have an account?";
+                    switchBtn.textContent = "Login";
+                }
+                box.style.opacity = '1';
+            }, 200);
+        }
+
+        window.togglePasswordVisibility = function() {
+            const passwordInput = document.getElementById('authPassword');
+            const toggleIcon = document.getElementById('passwordToggle').querySelector('i');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            }
+        }
+
+        window.clearAuthError = function() {
+            const msg = document.getElementById('authErrorMsg');
+            const inp = document.getElementById('authPassword');
+            const box = document.getElementById('authBox');
+            msg.classList.remove('show');
+            inp.classList.remove('error');
+            box.classList.remove('shake');
+        }
+
+        window.handleAuthAction = async () => {
+            const e = document.getElementById('authEmail').value;
+            const p = document.getElementById('authPassword').value;
+            const btn = document.getElementById('mainAuthBtn');
+            window.clearAuthError();
+            
+            if(!e || !p) {
+                const msg = document.getElementById('authErrorMsg');
+                msg.innerText = "Please fill all fields";
+                msg.classList.add('show');
+                document.getElementById('authBox').classList.add('shake');
+                return;
+            }
+            
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Please Wait...';
+            btn.disabled = true;
+
+            try {
+                if (isLoginMode) {
+                    await signInWithEmailAndPassword(auth, e, p);
+                } else {
+                    isSigningUp = true;
+                    await createUserWithEmailAndPassword(auth, e, p);
+                    btn.classList.add('btn-success');
+                    btn.innerHTML = '<i class="fas fa-check"></i> Successful!';
+                }
+            } catch (err) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                const msg = document.getElementById('authErrorMsg');
+                const box = document.getElementById('authBox');
+                const passInput = document.getElementById('authPassword');
+                
+                box.classList.remove('shake');
+                void box.offsetWidth; 
+                box.classList.add('shake');
+                passInput.classList.add('error');
+                
+                if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') msg.innerText = "Incorrect Password";
+                else if (err.code === 'auth/user-not-found') msg.innerText = "Account not found";
+                else if (err.code === 'auth/invalid-email') msg.innerText = "Invalid email address";
+                else if (err.code === 'auth/weak-password') msg.innerText = "Password too short (min 6 chars)";
+                else if (err.code === 'auth/email-already-in-use') msg.innerText = "Email already registered";
+                else msg.innerText = "Error: " + err.message;
+                msg.classList.add('show');
+            }
+        };
+
+        window.logout = () => {
+            document.getElementById('menuDropdown').classList.remove('active');
+            showConfirm("Are you sure you want to logout?", () => {
+                signOut(auth).then(() => window.location.reload()).catch(e => showAlert(e.message));
+            });
+        };
+
+        window.openForgotPasswordModal = function() {
+            document.getElementById('resetEmail').value = '';
+            document.getElementById('authScreen').classList.add('hidden'); 
+            document.getElementById('forgotPasswordModal').classList.add('active');
+            pushModalState('forgotPassword');
+        }
+
+        window.sendPasswordResetEmail = async function() {
+            const email = document.getElementById('resetEmail').value;
+            const btn = document.getElementById('sendResetBtn');
+            if (!email) return showAlert("Please enter your email address.");
+
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Sending...';
+            btn.disabled = true;
+
+            try {
+                await sendPasswordResetEmail(auth, email);
+                window.goBack();
+                document.getElementById('authScreen').classList.remove('hidden'); 
+                showAlert("Reset link sent! Check your email.");
+                btn.innerHTML = 'Send Reset Link';
+                btn.disabled = false;
+            } catch (err) {
+                btn.innerHTML = 'Send Reset Link';
+                btn.disabled = false;
+                showAlert(err.message);
+            }
+        }
+        
+        window.showMandatoryGuide = function() {
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('appLoader').classList.add('hidden');
+            
+            const helpModal = document.getElementById('helpModal');
+            const modalBox = helpModal.querySelector('.modal-box');
+            const oldCloseBtn = document.getElementById('helpModalCloseBtn'); 
+            
+            if (oldCloseBtn) oldCloseBtn.remove();
+            
+            const continueBtn = document.createElement('button');
+            continueBtn.id = 'continueAppBtn';
+            continueBtn.className = 'btn-primary';
+            continueBtn.style.cssText = 'margin-top: 15px; background: var(--text-sub);';
+            continueBtn.innerHTML = 'Reading Time (10)...';
+            continueBtn.disabled = true;
+            
+            continueBtn.onclick = function() {
+                const newCloseBtn = document.createElement('button');
+                newCloseBtn.id = 'helpModalCloseBtn';
+                newCloseBtn.className = 'btn-primary';
+                newCloseBtn.style.cssText = 'margin-top: 15px; background: var(--text-sub);';
+                newCloseBtn.innerHTML = 'Close Guide';
+                newCloseBtn.onclick = window.goBack;
+                
+                modalBox.appendChild(newCloseBtn);
+                continueBtn.remove(); 
+                
+                helpModal.classList.remove('active');
+                window.goBack(); 
+                document.getElementById('mainApp').classList.remove('hidden'); 
+                isSigningUp = false; 
+            };
+
+            modalBox.appendChild(continueBtn);
+            helpModal.classList.add('active');
+            pushModalState('help'); 
+
+            let countdown = 10;
+            const timer = setInterval(() => {
+                countdown--;
+                continueBtn.innerHTML = `Reading Time (${countdown})...`;
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    continueBtn.innerHTML = 'Continue to App <i class="fas fa-arrow-right"></i>';
+                    continueBtn.style.background = 'var(--logo-c)';
+                    continueBtn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        function initDataListeners(uid) {
+            if(fileUnsub) { fileUnsub(); fileUnsub = null; }
+            if(vaultUnsub) { vaultUnsub(); vaultUnsub = null; }
+            if(vaultSettingsUnsub) { vaultSettingsUnsub(); vaultSettingsUnsub = null; }
+
+            fileUnsub = onSnapshot(collection(db, "users", uid, "files"), (snapshot) => {
+                files = snapshot.docs.map(doc => doc.data());
+                renderFiles(currentFilter);
+                document.getElementById('appLoader').classList.add('hidden');
+                if (!isSigningUp) { 
+                    document.getElementById('mainApp').classList.remove('hidden');
+                }
+            });
+
+            vaultUnsub = onSnapshot(collection(db, "users", uid, "vault"), (snapshot) => {
+                vaultFiles = snapshot.docs.map(doc => doc.data());
+                if(!document.getElementById('vaultView').classList.contains('hidden')) {
+                    renderVaultFiles();
+                }
+            });
+
+            const secDocRef = doc(db, "users", uid, "settings", "security");
+            vaultSettingsUnsub = onSnapshot(secDocRef, (docSnap) => {
+                if (docSnap.exists()) vaultSettings = docSnap.data();
+                else vaultSettings = { pin: null, answer: null };
+            });
+        }
+
+        // --- UTILITIES ---
+        let globalConfirmCallback = null;
+        let contentToCopy = '';
+        let longPressTimer;
+        let isLongPress = false;
+        
+        function updateThemeToggleText() {
+            const textElement = document.getElementById('themeToggleText');
+            if (textElement) textElement.textContent = settings.dark ? 'Light Mode' : 'Dark Mode';
+        }
+        
+        window.addEventListener('popstate', (event) => {
+            const activeModals = document.querySelectorAll('.modal.active');
+            if (activeModals.length > 0) {
+                activeModals.forEach(m => m.classList.remove('active'));
+                document.getElementById('menuDropdown').classList.remove('active');
+            }
+        });
+
+        function pushModalState(modalName) { history.pushState({ modal: modalName }, null, ""); }
+        window.goBack = function() { history.back(); }
+
+        window.onclick = (e) => {
+            if (e.target.classList.contains('modal')) { if(document.querySelector('.modal.active')) window.goBack(); }
+            if (!e.target.closest('#menuBtn') && !e.target.closest('#menuDropdown')) { document.getElementById('menuDropdown').classList.remove('active'); }
+        };
+
+        document.getElementById('menuBtn').onclick = (e) => { e.stopPropagation(); document.getElementById('menuDropdown').classList.toggle('active'); };
+        
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                renderFiles(e.target.value);
+            }, 250);
+        });
+        
+        document.getElementById('fileForm').onsubmit = saveFile;
+
+        function showAlert(msg) { 
+            document.getElementById('messageText').innerText = msg;
+            document.getElementById('messageModal').classList.add('active'); 
+            pushModalState('message'); 
+        }
+        
+        function showConfirm(msg, cb) {
+            globalConfirmCallback = cb;
+            document.getElementById('confirmText').innerText = msg; 
+            document.getElementById('confirmModal').classList.add('active'); 
+            pushModalState('confirm');
+            document.getElementById('confirmYesBtn').onclick = () => { 
+                document.getElementById('confirmModal').classList.remove('active');
+                window.goBack(); 
+                if(globalConfirmCallback) globalConfirmCallback(); 
+            };
+        }
+        
+        function openCopyModal(file, context) {
+            // Decrypt content if needed
+            let text = file.content;
+            if (context === 'vault' && vaultSettings.pin) {
+                text = decryptData(file.content, vaultSettings.pin);
+            }
+            contentToCopy = text;
+            document.getElementById('copyContentArea').value = contentToCopy; 
+            document.getElementById('copyModal').classList.add('active'); 
+            pushModalState('copy');
+        }
+        
+        window.performCopy = function() {
+            const c = document.getElementById('copyContentArea');
+            c.select(); c.setSelectionRange(0,99999);
+            try { document.execCommand('copy'); showAlert("Copied!"); } catch(e) { showAlert("Failed to copy"); }
+        }
+
+        window.toggleTheme = function() { 
+            settings.dark = !settings.dark;
+            document.documentElement.classList.toggle('dark-mode'); 
+            updateThemeToggleText(); 
+            saveSettings();
+            document.getElementById('menuDropdown').classList.remove('active');
+        }
+        
+        window.setView = function(m, s=false) { settings.viewMode = m; document.documentElement.classList.remove('view-grid','view-list'); document.documentElement.classList.add('view-'+m); if(!s)saveSettings(); document.getElementById('menuDropdown').classList.remove('active'); }
+        window.setSize = function(z, s=false) { settings.size = z; document.documentElement.classList.remove('size-small','size-medium','size-large'); document.documentElement.classList.add('size-'+z); if(!s)saveSettings(); document.getElementById('menuDropdown').classList.remove('active'); }
+        function saveSettings() { localStorage.setItem('ls_settings', JSON.stringify(settings)); }
+
+        window.onscroll = function() {
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+                if (filteredFiles.length > displayLimit) {
+                    loadMoreFiles();
+                }
+            }
+        };
+
+        function renderFiles(filter="") {
+            currentFilter = filter;
+            displayLimit = 50;
+            const grid = document.getElementById('fileGrid');
+            grid.innerHTML = "";
+            
+            filteredFiles = files.filter(x => x.name.toLowerCase().includes(filter.toLowerCase()));
+            
+            if(filteredFiles.length === 0) {
+                grid.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:var(--text-sub);padding:40px;'>Empty Cloud Storage</div>";
+                return;
+            }
+            appendFilesToGrid(filteredFiles.slice(0, displayLimit), grid);
+        }
+        
+        function loadMoreFiles() {
+            const start = displayLimit;
+            const end = displayLimit + 30;
+            const nextBatch = filteredFiles.slice(start, end);
+            if (nextBatch.length > 0) {
+                appendFilesToGrid(nextBatch, document.getElementById('fileGrid'));
+                displayLimit += 30;
+            }
+        }
+
+        function appendFilesToGrid(list, grid) {
+            const fragment = document.createDocumentFragment();
+            list.forEach(x => fragment.appendChild(createCard(x, 'main')));
+            grid.appendChild(fragment);
+        }
+
+        function renderVaultFiles() {
+            const grid = document.getElementById('vaultGrid');
+            grid.innerHTML = "";
+            if(vaultFiles.length===0) grid.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:var(--text-sub);padding:40px;'>Empty Vault</div>";
+            const fragment = document.createDocumentFragment();
+            vaultFiles.forEach(x => fragment.appendChild(createCard(x, 'vault')));
+            grid.appendChild(fragment);
+        }
+
+        // --- SECURITY UPDATE: XSS Safe Card Creation ---
+        function createCard(f, context) {
+            const div = document.createElement('div');
+            div.className = 'card';
+            
+            let iconClass = 'fa-link'; 
+            if (f.type === 'note') iconClass = 'fa-align-left';
+            if (f.type === 'code') iconClass = 'fa-code';
+
+            // DOM Creation for XSS Safety
+            const iconEl = document.createElement('i');
+            iconEl.className = `fas ${iconClass} card-icon`;
+            
+            const titleEl = document.createElement('div');
+            titleEl.className = 'card-title';
+            titleEl.textContent = f.name; 
+
+            div.appendChild(iconEl);
+            div.appendChild(titleEl);
+
+            div.onclick = (e) => { if (isLongPress) { isLongPress = false; return; } window.openFile(f, context); };
+            const startHandler = (e) => { isLongPress = false; longPressTimer = setTimeout(() => { isLongPress = true; openCopyModal(f, context); }, 700); };
+            const endHandler = () => { clearTimeout(longPressTimer); };
+            div.addEventListener('mousedown', (e) => { if(e.button===0) startHandler(e); });
+            div.addEventListener('mouseup', endHandler);
+            div.addEventListener('mouseleave', endHandler);
+            div.addEventListener('touchstart', startHandler, {passive: true}); 
+            div.addEventListener('touchend', endHandler);
+            div.addEventListener('touchmove', endHandler);
+            div.addEventListener('contextmenu', (e) => { e.preventDefault(); openCopyModal(f, context); });
+            return div;
+        }
+
+        window.openFile = function(f, context) {
+            let contentToShow = f.content;
+            // Lazy Decryption
+            if (context === 'vault' && vaultSettings.pin) {
+                contentToShow = decryptData(f.content, vaultSettings.pin);
+                if(!contentToShow) contentToShow = "Error: Decryption Failed";
+            }
+
+            if (f.type === 'link') { window.open(contentToShow, '_blank'); return; }
+            if (f.type === 'note') {
+                pushModalState(f.type);
+                activeNoteContext = context;
+                document.getElementById('noteViewId').value = f.id;
+                document.getElementById('noteViewTitle').value = f.name;
+                document.getElementById('noteViewContent').value = contentToShow;
+                document.getElementById('noteViewDate').textContent = f.date || '';
+                document.getElementById('noteModal').classList.add('active');
+            } else {
+                pushModalState(f.type); 
+                document.getElementById('runnerModal').classList.add('active');
+                document.getElementById('codeFrame').srcdoc = contentToShow;
+            }
+        }
+
+        window.openEditor = function(id, context) {
+            document.getElementById('managerModal').classList.remove('active');
+            pushModalState('editor');
+            editContext = context; document.getElementById('fileForm').reset();
+            let ft = 'link';
+            if (id) {
+                const list = context === 'main' ? files : vaultFiles;
+                const f = list.find(x => x.id === id);
+                document.getElementById('editId').value = id;
+                document.getElementById('fileName').value = f.name;
+                ft = f.type;
+                let content = f.content;
+                if(context === 'vault') content = decryptData(content, vaultSettings.pin);
+
+                if(f.type === 'link') document.getElementById('fileUrl').value = content;
+                else document.getElementById('fileContent').value = content;
+            } else document.getElementById('editId').value = "";
+            window.setType(ft); 
+            document.getElementById('editorModal').classList.add('active');
+        }
+
+        window.openHelp = function() {
+            pushModalState('help');
+            document.getElementById('helpModalCloseBtn').style.display='block';
+            document.getElementById('continueAppBtn')?.remove();
+            document.getElementById('helpModal').classList.add('active');
+            document.getElementById('menuDropdown').classList.remove('active');
+        }
+        
+        window.setType = function(t) {
+            document.getElementById('fileType').value = t;
+            document.querySelectorAll('.type-btn').forEach(b => {
+                b.classList.remove('active'); if(b.getAttribute('data-type')===t) b.classList.add('active');
+            });
+            toggleInputs();
+        }
+
+        function toggleInputs() {
+            const t = document.getElementById('fileType').value;
+            const box = document.querySelector('#editorModal .modal-box');
+            if(t==='note') box.classList.add('expanded'); else box.classList.remove('expanded');
+            if(t==='link') { document.getElementById('fileUrl').style.display='block'; document.getElementById('fileUrl').required=true; document.getElementById('fileContent').style.display='none'; document.getElementById('fileContent').required=false; }
+            else { document.getElementById('fileUrl').style.display='none'; document.getElementById('fileUrl').required=false; document.getElementById('fileContent').style.display='block'; document.getElementById('fileContent').required=true; }
+        }
+
+        async function saveFile(e) {
+            e.preventDefault();
+            if(!currentUser) return showAlert("Please Login First!");
+
+            const submitBtn = document.querySelector('#fileForm .btn-primary');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
+
+            const name = document.getElementById('fileName').value.trim();
+            const type = document.getElementById('fileType').value;
+            let content = type === 'link' ? document.getElementById('fileUrl').value : document.getElementById('fileContent').value;
+            const id = document.getElementById('editId').value ? Number(document.getElementById('editId').value) : Date.now();
+            const idStr = String(id);
+            const list = editContext === 'main' ? files : vaultFiles;
+            const collectionName = editContext === 'main' ? 'files' : 'vault';
+            
+            const isDuplicate = list.some(f => f.name.toLowerCase() === name.toLowerCase() && f.id !== id);
+            if (isDuplicate) {
+                submitBtn.disabled = false; submitBtn.innerHTML = originalBtnText;
+                return showAlert("Name exists in Cloud!");
+            }
+
+            if(type==='link' && !content.startsWith('http')) content = 'https://'+content;
+            let date = '';
+            if(type==='note') {
+                const now = new Date();
+                date = now.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ", " + now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+            }
+
+            // Encrypt if Vault
+            if (editContext === 'vault' && vaultSettings.pin) {
+                content = encryptData(content, vaultSettings.pin);
+            }
+
+            try {
+                await setDoc(doc(db, "users", currentUser.uid, collectionName, idStr), {id, name, type, content, date});
+                window.goBack();
+            } catch (err) {
+                showAlert("Save Error: " + err.message);
+            } finally {
+                submitBtn.disabled = false; submitBtn.innerHTML = originalBtnText;
+            }
+        }
+        
+        window.saveAndCloseNote = async function() {
+            if(!currentUser) return;
+            const id = Number(document.getElementById('noteViewId').value);
+            const idStr = String(id);
+            const collectionName = activeNoteContext === 'main' ? 'files' : 'vault';
+            const list = activeNoteContext === 'main' ? files : vaultFiles;
+            const currentFile = list.find(x => x.id === id);
+            if(currentFile) {
+                const now = new Date();
+                const date = now.toLocaleDateString('en-US', {month:'short', day:'numeric'}) + ", " + now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+                let newContent = document.getElementById('noteViewContent').value;
+                
+                if(activeNoteContext === 'vault' && vaultSettings.pin) {
+                    newContent = encryptData(newContent, vaultSettings.pin);
+                }
+
+                const updatedData = { ...currentFile, name: document.getElementById('noteViewTitle').value, content: newContent, date: date };
+                try {
+                    await setDoc(doc(db, "users", currentUser.uid, collectionName, idStr), updatedData);
+                    window.goBack();
+                } catch (err) { showAlert("Cloud Update Error"); }
+            }
+        }
+
+        function renderManagerList(c) {
+             const d = document.getElementById('fileList');
+             d.innerHTML=""; 
+             const l=c==='main'?files:vaultFiles;
+             if(l.length === 0) d.innerHTML = "<p style='text-align:center; color:var(--text-sub); padding:10px;'>No files in Cloud</p>";
+             const fragment = document.createDocumentFragment();
+             l.forEach(f=>{
+                const i=document.createElement('div'); i.style.cssText="padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;";
+                const mi=c==='main'?'fa-lock':'fa-unlock';
+                i.innerHTML=`<span style="font-size:14px;font-weight:500;overflow:hidden;white-space:nowrap;max-width:50%;text-overflow:ellipsis;user-select:text;">${f.name}</span>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="window.openEditor(${f.id},'${c}')" class="btn-icon" style="width:30px;height:30px;background:var(--input-bg);"><i class="fas fa-pen" style="font-size:12px;"></i></button>
+                    <button onclick="window.moveFile(${f.id},'${c}')" class="btn-icon" style="width:30px;height:30px;background:var(--input-bg);"><i class="fas ${mi}" style="font-size:12px;"></i></button>
+                    <button onclick="window.deleteFile(${f.id},'${c}')" class="btn-icon" style="width:30px;height:30px;background:#fee2e2;color:red;"><i class="fas fa-trash" style="font-size:12px;"></i></button>
+                </div>`;
+                fragment.appendChild(i);
+            });
+            d.appendChild(fragment);
+        }
+
+        window.openManager = function(c) { 
+            pushModalState('manager');
+            editContext = c; 
+            renderManagerList(c);
+            document.getElementById('managerModal').classList.add('active'); 
+            document.getElementById('menuDropdown').classList.remove('active');
+        }
+
+        window.moveFile = function(id, fc) {
+            showConfirm(fc==='main'?"Move to Cloud Vault?":"Move to Home Cloud?", async ()=>{
+                if(!currentUser) return;
+                const idStr = String(id);
+                const sourceCol = fc === 'main' ? 'files' : 'vault';
+                const destCol = fc === 'main' ? 'vault' : 'files';
+                const list = fc === 'main' ? files : vaultFiles;
+                let fileData = list.find(x => x.id === id);
+                
+                if (fileData) {
+                    // Re-encrypt/Decrypt during move
+                    if (fc === 'main') { 
+                        // Main -> Vault (Encrypt)
+                         if(vaultSettings.pin) fileData.content = encryptData(fileData.content, vaultSettings.pin);
+                    } else {
+                        // Vault -> Main (Decrypt)
+                        if(vaultSettings.pin) fileData.content = decryptData(fileData.content, vaultSettings.pin);
+                    }
+
+                    try {
+                        await setDoc(doc(db, "users", currentUser.uid, destCol, idStr), fileData);
+                        await deleteDoc(doc(db, "users", currentUser.uid, sourceCol, idStr));
+                        renderManagerList(fc);
+                    } catch (err) { showAlert("Move Failed: " + err.message); }
+                }
+            });
+        }
+        
+        window.deleteFile = function(id, c) {
+            showConfirm("Delete from Cloud?", async ()=>{
+                if(!currentUser) return;
+                const idStr = String(id);
+                const collectionName = c === 'main' ? 'files' : 'vault';
+                try {
+                    await deleteDoc(doc(db, "users", currentUser.uid, collectionName, idStr));
+                    renderManagerList(c);
+                } catch(err) { showAlert("Delete Failed"); }
+            });
+        }
+
+        window.openAuthModal = function() {
+            if(!currentUser) return showAlert("Login first!");
+            pushModalState('auth');
+            ['setupView','loginView','resetView'].forEach(i=>document.getElementById(i).classList.add('hidden'));
+            
+            if(!vaultSettings.pin) { 
+                document.getElementById('setupPin').value=''; 
+                document.getElementById('setupView').classList.remove('hidden'); 
+            } else { 
+                document.getElementById('loginPin').value=''; 
+                document.getElementById('loginView').classList.remove('hidden'); 
+            }
+            document.getElementById('authModal').classList.add('active');
+        }
+        
+        window.setupVault = async function() {
+            if(!currentUser) return;
+            const p = document.getElementById('setupPin').value;
+            const a = document.getElementById('setupAnswer').value;
+            if(!/^\d{4}$/.test(p)||!a) return showAlert("Pin must be 4 digits & Answer required");
+            
+            try {
+                await setDoc(doc(db, "users", currentUser.uid, "settings", "security"), {
+                    pin: p,
+                    answer: a
+                });
+                showAlert("Secure Setup Complete! Syncing...");
+                window.goBack();
+                setTimeout(() => { window.enterVault(); }, 300);
+            } catch(err) {
+                showAlert("Setup Failed: " + err.message);
+            }
+        }
+
+        window.loginVault = function() {
+            if(document.getElementById('loginPin').value === vaultSettings.pin) { 
+                window.goBack(); 
+                window.enterVault(); 
+            } else {
+                showAlert("Wrong PIN");
+            }
+        }
+
+        window.enterVault = function() { 
+            document.getElementById('mainApp').style.display='none';
+            document.getElementById('vaultView').classList.remove('hidden'); 
+            renderVaultFiles(); 
+        }
+        window.exitVault = function() { 
+            document.getElementById('vaultView').classList.add('hidden');
+            document.getElementById('mainApp').style.display='block'; 
+            if(document.getElementById('fileGrid').innerHTML === "") renderFiles();
+        }
+
+        updateThemeToggleText();
+        window.setView(settings.viewMode, true); 
+        window.setSize(settings.size, true);
+    </script>
+</body>
+</html>
