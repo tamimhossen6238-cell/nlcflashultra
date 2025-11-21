@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- SECURITY POLICY -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net; img-src 'self' data: https:; frame-src 'self' blob:;">
+
+    <!-- Performance Preconnects -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    
+    <title>NLC | Pro (Cloud)</title>
+    
+    <!-- Optimized FontAwesome -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+    
+    <!-- Encryption Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" defer></script>
+    
+    <script>
+        let initialSettings = { dark: false, viewMode: 'grid', size: 'medium' };
+        try {
+            const stored = localStorage.getItem('ls_settings');
+            if (stored) initialSettings = JSON.parse(stored);
+        } catch (e) { console.warn("Local storage blocked"); }
+
+        if (initialSettings.dark) {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    
+    <style>
+        /* CSS variables */
+        :root {
+            --bg-body: #f0f2f5; --bg-card: #ffffff; --text-main: #1e293b; --text-sub: #64748b;
+            --border: #e2e8f0; --input-bg: #f8fafc; --input-border: #e2e8f0;
+            --primary: #2563eb; --primary-hover: #1d4ed8; --success: #10b981; --error: #ef4444;
+            --loader-bg: var(--bg-body); --loader-text: var(--text-main);
+            --logo-n: #1e293b; --logo-l: #3b82f6; --logo-c: #10b981;
+            --card-h: 130px; --card-w-min: 150px; --font-title: 14px; --icon-size: 24px;
+            --shadow-soft: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --shadow-auth: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            /* Smooth Transition Variable */
+            --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        html.dark-mode {
+            --bg-body: #000000; --bg-card: #0a0a0a; --text-main: #f8fafc; --text-sub: #94a3b8;
+            --border: #222222; --input-bg: #111111; --input-border: #334155;
+            --primary: #3b82f6; --primary-hover: #60a5fa; --logo-n: #f8fafc;
+            --shadow-auth: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+        }
+        
+        html.dark-mode .auth-box { background: rgba(17, 17, 17, 0.95); border: 1px solid rgba(255,255,255,0.1); }
+        html.dark-mode #authScreen { background-color: #000000; background-image: none; }
+        
+        /* Sizes & Views */
+        html.size-small body { --card-h: 100px; --card-w-min: 110px; --font-title: 12px; --icon-size: 18px; }
+        html.size-medium body { --card-h: 130px; --card-w-min: 150px; --font-title: 14px; --icon-size: 24px; }
+        html.size-large body { --card-h: 170px; --card-w-min: 190px; --font-title: 18px; --icon-size: 32px; }
+
+        html.view-list .grid { grid-template-columns: 1fr !important; gap: 10px; }
+        html.view-list .card { height: auto; flex-direction: row; justify-content: space-between; text-align: left; align-items: center; contain-intrinsic-size: 60px;}
+        html.view-list .card-title { margin: 0; flex: 1; -webkit-line-clamp: 1; }
+        html.view-list.size-small .card { padding: 8px 12px; } html.view-list.size-small .card-icon { margin: 0 10px 0 0; }
+        html.view-list.size-medium .card { padding: 16px 20px; } html.view-list.size-medium .card-icon { margin: 0 15px 0 0; }
+        html.view-list.size-large .card { padding: 25px 30px; } html.view-list.size-large .card-icon { margin: 0 25px 0 0; }
+
+        html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow-x: hidden; background-color: var(--bg-body); }
+        * { box-sizing: border-box; outline: none; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { color: var(--text-main); transition: background-color 0.2s; min-height: 100vh; user-select: none; -webkit-user-select: none; }
+        
+        /* AUTH */
+        #authScreen {
+            position: fixed; inset: 0; background: var(--bg-body);
+            background-image: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+            z-index: 6000; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 0.3s ease; will-change: opacity;
+        }
+        html:not(.dark-mode) #authScreen {
+             background-color: #f3f4f6;
+             background-image: radial-gradient(at 40% 20%, hsla(28,100%,74%,0.1) 0px, transparent 50%), radial-gradient(at 80% 0%, hsla(189,100%,56%,0.1) 0px, transparent 50%), radial-gradient(at 0% 50%, hsla(340,100%,76%,0.1) 0px, transparent 50%);
+        }
+        .auth-box {
+            background: rgba(255, 255, 255, 0.9); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.5);
+            text-align: center; max-width: 360px; width: 85%; box-shadow: var(--shadow-auth);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); position: relative; overflow: hidden;
+            will-change: transform, opacity;
+        }
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+        .auth-input-group { text-align: left; margin-bottom: 12px; }
+        .auth-label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 5px; color: var(--text-sub); margin-left: 4px; }
+        
+        /* Input Smooth Transition */
+        .auth-input { width: 100%; padding: 12px 15px; border-radius: 10px; border: 2px solid var(--input-border); background: var(--input-bg); color: var(--text-main); font-size: 15px; transition: border-color 0.2s var(--ease-snappy), background 0.2s var(--ease-snappy); }
+        .auth-input:focus { border-color: var(--primary); background: var(--bg-card); }
+        .auth-input.error { border-color: var(--error); background: rgba(239, 68, 68, 0.05); animation: shake 0.3s; }
+
+        .btn-primary {
+            width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 10px; font-weight: 600; font-size: 15px;
+            cursor: pointer; 
+            /* Smooth Button Transition */
+            transition: transform 0.1s var(--ease-snappy), background-color 0.2s ease; 
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            will-change: transform;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .btn-success { background: var(--success) !important; }
+        .auth-switch-link { margin-top: 15px; font-size: 13px; color: var(--text-sub); }
+        .auth-switch-link b { cursor: pointer; color: var(--primary); }
+        .error-msg { color: var(--error); font-size: 12px; margin-top: 5px; font-weight: 600; display: none; text-align: left; margin-left: 4px; }
+        .error-msg.show { display: block; animation: fadeInUp 0.1s ease-out; }
+
+        /* LOADER */
+        #appLoader { position: fixed; inset: 0; background-color: var(--loader-bg); color: var(--loader-text); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5000; transition: opacity 0.3s ease; will-change: opacity; }
+        .nlc-loader-wrapper { position: relative; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px; }
+        .nlc-logo-text { font-size: 28px; font-weight: 900; letter-spacing: -1px; z-index: 2; animation: pulseText 2s ease-in-out infinite; }
+        .spinner-ring { position: absolute; inset: 0; border-radius: 50%; border: 4px solid transparent; border-top-color: var(--logo-l); border-right-color: var(--logo-c); border-bottom-color: var(--logo-l); animation: spinRing 1.2s linear infinite; will-change: transform;}
+        @keyframes spinRing { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseText { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.95); } }
+
+        /* APP */
+        header { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 12px 15px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-soft); will-change: transform; }
+        .brand { font-weight: 900; font-size: 22px; letter-spacing: -1px; cursor: default; line-height: 1;}
+        .l-n { color: var(--logo-n); } .l-l { color: var(--logo-l); } .l-c { color: var(--logo-c); }
+        .vault-trigger { font-size: 18px; color: var(--text-sub); cursor: pointer; padding: 5px; border-radius: 50%; display: flex; align-items: center; transition: color 0.2s; }
+        .vault-trigger:active { color: var(--logo-l); }
+        
+        .search-input { width: 100%; background: var(--input-bg); border: 1px solid var(--input-border); padding: 8px 12px; border-radius: 8px; font-size: 14px; color: var(--text-main); transition: 0.2s var(--ease-snappy); text-align: center; }
+        .search-input:focus { background: var(--bg-card); border-color: var(--logo-l); text-align: left; }
+        
+        .btn-icon { 
+            width: 34px; height: 34px; border-radius: 8px; border: none; background: transparent; color: var(--text-main); font-size: 15px; 
+            cursor: pointer; display: flex; justify-content: center; align-items: center; 
+            transition: background 0.15s var(--ease-snappy), transform 0.1s;
+        }
+        .btn-icon:active { transform: scale(0.9); background: var(--input-bg); }
+        
+        .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 15px; padding-bottom: 80px; }
+        
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(var(--card-w-min), 1fr)); 
+            gap: 12px; 
+            content-visibility: auto; 
+            contain-intrinsic-size: 1px 500px; 
+        }
+        
+        .card { 
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; height: var(--card-h); padding: 15px; 
+            cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; 
+            /* Card Smoothness */
+            transition: transform 0.15s var(--ease-snappy), box-shadow 0.15s ease; 
+            box-shadow: var(--shadow-soft); 
+            contain: content;
+        }
+        .card:active { transform: scale(0.96); }
+        .card-icon { font-size: var(--icon-size); margin-bottom: 8px; color: var(--text-main); opacity: 0.8; }
+        .card-title { font-size: var(--font-title); font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25;}
+        
+        .menu-dropdown { position: absolute; top: 60px; right: 15px; width: 200px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 8px; display: none; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 200; max-height: 80vh; overflow-y: auto; }
+        .menu-dropdown.active { display: flex; animation: fadeInUp 0.15s ease-out; }
+        .menu-item { padding: 10px; font-size: 13px; cursor: pointer; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; color: var(--text-main);}
+        .menu-item:hover { background: var(--input-bg); }
+        .menu-divider { height: 1px; background: var(--border); margin: 4px 0; }
+        
+        .modal { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; 
+            backdrop-filter: blur(3px); 
+            /* Modal Transition */
+            transition: opacity 0.2s ease; 
+            opacity: 0;
+            will-change: opacity;
+            transform: translate3d(0,0,0);
+        }
+        .modal.active { display: flex; opacity: 1; }
+        .modal-box { 
+            background: var(--bg-card); width: 90%; max-width: 400px; padding: 20px; border-radius: 16px; border: 1px solid var(--border); 
+            transition: transform 0.2s var(--ease-snappy); 
+            transform: scale(0.95);
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3); 
+            will-change: transform;
+        }
+        .modal.active .modal-box { transform: scale(1); }
+
+        .modal-box.expanded { max-width: 100vw; width: 100%; height: 100%; border-radius: 0; display: flex; flex-direction: column; padding: 0; border: none; transform: none;}
+        .modal-box.expanded form { display: flex; flex-direction: column; height: 100%; padding: 20px; }
+        .modal-box.expanded textarea { flex: 1; height: auto !important; margin-bottom: 0; }
+        .fullscreen { width: 100%; height: 100%; max-width: none; border-radius: 0; padding: 0; display: flex; flex-direction: column; border: none; }
+        
+        input:not(.auth-input), select, textarea { width: 100%; padding: 12px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-main); font-size: 14px; margin-bottom: 15px; transition: border-color 0.15s ease; }
+        input:focus, select:focus, textarea:focus { border-color: var(--logo-l); }
+        
+        /* Note View */
+        .note-view-header { padding: 20px 25px; display: flex; align-items: flex-start; justify-content: space-between; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+        .note-info-wrapper { flex: 1; display: flex; flex-direction: column; gap: 6px; margin-right: 15px; }
+        #noteViewTitle { font-size: 22px; font-weight: 700; border: none; background: transparent; padding: 0; margin: 0; width: 100%; color: var(--text-main); }
+        #noteViewDate { font-size: 12px; color: var(--text-sub); font-weight: 500; }
+        .note-btn { background: var(--text-main); color: var(--bg-card); border: none; padding: 0; border-radius: 50%; cursor: pointer; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; transition: transform 0.1s; }
+        .note-btn:active { transform: scale(0.9); }
+        .note-btn.done-tick { background: var(--logo-c); color: white; }
+        
+        /* Vault Header */
+        .vault-header { background: #000000; border-bottom: 1px solid #333; padding: 12px 15px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 10px; }
+        html:not(.dark-mode) .vault-header { background: #1e293b; }
+        #type-btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        .type-btn { flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--border); background: var(--input-bg); color: var(--text-sub); text-align: center; cursor: pointer; font-size: 12px; transition: 0.15s; }
+        .type-btn.active { border-color: var(--logo-l); background: var(--bg-card); color: var(--logo-l); }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="authScreen" class="hidden">
+        <div class="auth-box" id="authBox">
+            <div class="brand" style="margin-bottom: 8px; font-size: 42px;"><span class="l-n">N</span><span class="l-l">L</span><span class="l-c">C</span></div>
+            <h2 id="authTitle" style="color: var(--text-main); margin-bottom: 5px; font-size: 22px;">Welcome Back</h2>
+            <p style="color: var(--text-sub); margin-bottom: 25px; font-size: 13px;">Manage your cloud files securely</p>
+            
+            <div class="auth-input-group">
+                <label class="auth-label">Email Address</label>
+                <input type="email" id="authEmail" class="auth-input" placeholder="name@example.com" required oninput="window.clearAuthError()" autocomplete="off">
+            </div>
+            
+            <div class="auth-input-group">
+                <label class="auth-label">Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="authPassword" class="auth-input" placeholder="••••••••" required style="padding-right: 40px;" oninput="window.clearAuthError()" autocomplete="new-password">
+                    <span id="passwordToggle" onclick="window.togglePasswordVisibility()" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-sub); padding: 5px;"><i class="fas fa-eye-slash"></i></span>
+                </div>
+            </div>
+            
+            <div class="auth-input-group hidden" id="confirmPassGroup">
+                <label class="auth-label">Confirm Password</label>
+                <input type="password" id="authConfirmPassword" class="auth-input" placeholder="Repeat Password" autocomplete="new-password">
+            </div>
+
+            <div id="authErrorMsg" class="error-msg">Incorrect Password</div>
+            
+            <div style="text-align: right; margin-bottom: 20px;">
+                <b style="cursor: pointer; color: var(--primary); font-size: 12px; font-weight: 600;" onclick="window.openForgotPasswordModal()">Forgot Password?</b>
+            </div>
+            
+            <button id="mainAuthBtn" class="btn-primary" onclick="window.handleAuthAction()">
+                <span>Login</span> <i class="fas fa-arrow-right"></i>
+            </button>
+            
+            <div class="auth-switch-link">
+                <span id="authSwitchText">New here?</span> 
+                <b id="authSwitchBtn" onclick="window.toggleAuthMode()">Create Account</b>
+            </div>
+        </div>
+    </div>
+
+    <div id="appLoader">
+        <div class="nlc-loader-wrapper">
+            <div class="spinner-ring"></div>
+            <div class="nlc-logo-text"><span class="l-n">N</span><span class="l-l">L</span><span class="l-c">C</span></div>
+        </div>
+        <p style="font-size: 14px; color: var(--text-sub); font-weight: 500;">Loading...</p>
+    </div>
+
+    <div id="mainApp" class="hidden">
+        <header>
+            <div class="brand-wrapper" style="display:flex;align-items:center;gap:8px;"><div class="brand"><span class="l-n">N</span><span class="l-l">L</span><span class="l-c">C</span></div><div class="vault-trigger" onclick="window.openAuthModal()"><i class="fas fa-shield-alt"></i></div></div>
+            <div style="flex: 1; margin: 0 10px;"><input type="text" class="search-input" id="searchInput" placeholder="Search..." autocomplete="off"></div>
+            <div class="actions" style="display:flex; gap:5px;">
+                <button class="btn-icon" onclick="window.openEditor(null, 'main')" title="Add New"><i class="fas fa-plus"></i></button>
+                <button class="btn-icon" id="menuBtn" title="Menu"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+            <div class="menu-dropdown" id="menuDropdown">
+                <div class="menu-item" style="background: var(--input-bg);">
+                    <div id="userAvatar" style="width:24px;height:24px;background:var(--logo-l);color:white;border-radius:50%;display:flex;justify-content:center;align-items:center;font-weight:bold;margin-right:8px;">U</div>
+                    <div style="flex:1;overflow:hidden;"><div id="userName" style="font-size:12px;font-weight:bold;">User</div><div id="connectionStatus" style="font-size:10px;color:var(--text-sub);">Online</div></div>
+                </div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.openManager('main')">File Manager <i class="fas fa-folder-open"></i></div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.toggleTheme()"><span id="themeToggleText">Dark Mode</span> <i class="fas fa-moon"></i></div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.setView('grid')">Grid View <i class="fas fa-th"></i></div>
+                <div class="menu-item" onclick="window.setView('list')">List View <i class="fas fa-list"></i></div>
+                <div class="menu-divider"></div>
+                <div class="menu-item" onclick="window.logout()" style="color: var(--error);">Logout <i class="fas fa-sign-out-alt"></i></div>
+            </div>
+        </header>
+        <div class="container">
+            <div class="grid" id="fileGrid"></div>
+            <!-- Intersection Observer Target for Infinite Scroll -->
+            <div id="loadTrigger" style="height:40px; width:100%;"></div>
+        </div>
+    </div>
+
+    <div id="vaultView" class="hidden">
+        <header class="vault-header">
+            <div class="brand"><span style="color:white">V</span><span style="color:#3b82f6">LT</span></div>
+            <div class="actions" style="margin-left: auto; display:flex; gap:5px;">
+                <button class="btn-icon" style="color: white;" onclick="window.openEditor(null, 'vault')"><i class="fas fa-plus"></i></button>
+                <button class="btn-icon" style="color: white;" onclick="window.openManager('vault')"><i class="fas fa-cog"></i></button>
+                <button class="btn-icon" style="color: #ef4444;" onclick="window.exitVault()"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+        <div class="container">
+            <div class="grid" id="vaultGrid"></div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal" id="editorModal">
+        <div class="modal-box">
+            <h3 style="margin-bottom: 15px;">New Item</h3>
+            <form id="fileForm" autocomplete="off">
+                <input type="hidden" id="editId">
+                <input type="text" id="fileName" placeholder="Name" required autocomplete="off" spellcheck="false">
+                <input type="hidden" id="fileType" value="link">
+                <div id="type-btn-group">
+                    <div class="type-btn active" data-type="link" onclick="window.setType('link')"><i class="fas fa-link"></i> Link</div>
+                    <div class="type-btn" data-type="note" onclick="window.setType('note')"><i class="fas fa-align-left"></i> Note</div>
+                    <div class="type-btn" data-type="code" onclick="window.setType('code')"><i class="fas fa-code"></i> Code</div>
+                </div>
+                <input type="url" id="fileUrl" placeholder="https://" autocomplete="off">
+                <textarea id="fileContent" placeholder="Write content..." style="height: 100px; display: none;" autocomplete="off" spellcheck="false"></textarea>
+                <button type="submit" class="btn-primary">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="noteModal">
+        <div class="modal-box fullscreen" style="background: var(--bg-body);">
+            <div class="note-view-header">
+                <div class="note-info-wrapper">
+                    <input type="text" id="noteViewTitle" placeholder="Title..." autocomplete="off">
+                    <span id="noteViewDate">No Date</span> 
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="window.saveAndCloseNote()" class="note-btn done-tick"><i class="fas fa-check"></i></button>
+                    <button onclick="window.goBack()" class="note-btn" style="background:var(--input-bg); color:var(--text-main);"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <textarea id="noteViewContent" style="flex: 1; padding: 20px; border: none; background: transparent; resize: none; font-size: 16px; color: var(--text-main);" autocomplete="off" spellcheck="false"></textarea>
+            <input type="hidden" id="noteViewId">
+        </div>
+    </div>
+
+    <div class="modal" id="runnerModal"><div class="modal-box fullscreen" style="background: #fff;"><iframe id="codeFrame" style="border:none; width:100%; height:100%; background: white;"></iframe></div></div>
+    <div class="modal" id="managerModal"><div class="modal-box"><h3 style="margin-bottom: 15px;">Cloud Manager</h3><div id="fileList" style="max-height: 300px; overflow-y: auto;"></div><button onclick="window.goBack()" class="btn-primary" style="margin-top: 15px; background: var(--text-sub);">Close Manager</button></div></div>
+    
+    <div class="modal" id="authModal">
+        <div class="modal-box" style="text-align: center;">
+            <i class="fas fa-lock" style="font-size: 30px; margin-bottom: 15px; color: var(--logo-l);"></i>
+            
+            <div id="setupView" class="hidden">
+                <p style="margin-bottom: 10px; font-size: 14px; color: var(--text-sub);">Security Question:<br><b>What is your favourite food?</b></p>
+                <input type="text" id="setupAnswer" placeholder="Answer" autocomplete="off">
+                <!-- Updated Vault Input: Type tel, numeric pattern, auto submit logic handled in JS -->
+                <input type="tel" id="setupPin" maxlength="4" placeholder="••••" style="text-align:center; letter-spacing:5px; font-size:20px;" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+                <button onclick="window.setupVault()" class="btn-primary">Set PIN & Sync</button>
+            </div>
+            
+            <div id="loginView" class="hidden">
+                <!-- Updated Vault Input: English Only, Numeric Keyboard -->
+                <input type="tel" id="loginPin" maxlength="4" placeholder="••••" style="text-align:center; letter-spacing:5px; font-size:24px;" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+                <button onclick="window.loginVault()" class="btn-primary" style="margin-top: 10px;">Unlock Cloud Vault</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="messageModal"><div class="modal-box" style="text-align: center;"><p id="messageText" style="font-size: 16px; margin-bottom: 20px;"></p><button onclick="window.goBack()" class="btn-primary" style="width: 50%; margin: 0 auto;">OK</button></div></div>
+    <div class="modal" id="copyModal"><div class="modal-box"><h3 style="margin-bottom: 15px;">Copy Content</h3><textarea id="copyContentArea" readonly style="height: 100px; font-size: 12px; margin-bottom: 15px; user-select: text;"></textarea><button onclick="window.performCopy()" class="btn-primary" style="background: var(--logo-c);">Copy</button><button onclick="window.goBack()" class="btn-primary" style="background: var(--text-sub); margin-top: 10px;">Close</button></div></div>
+    <div class="modal" id="forgotPasswordModal"><div class="modal-box" style="text-align: center;"><h3 style="margin-bottom: 15px;">Reset Password</h3><p style="margin-bottom: 15px; font-size: 14px; color: var(--text-sub);">Enter email to reset.</p><input type="email" id="resetEmail" class="auth-input" placeholder="Email Address"><button id="sendResetBtn" class="btn-primary" style="margin-top: 15px;" onclick="window.sendPasswordResetEmail()">Send Link</button><button onclick="window.goBack()" style="background:none; border:none; color:var(--text-sub); margin-top:10px;">Cancel</button></div></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCaxYd2TgiNhus3w676wgFzYwnHeYMHVCs",
+            authDomain: "nlc-44777.firebaseapp.com",
+            projectId: "nlc-44777",
+            storageBucket: "nlc-44777.firebasestorage.app",
+            messagingSenderId: "143310032996",
+            appId: "1:143310032996:web:eed0e533f31c98a8becf71",
+            measurementId: "G-WPNT8RE3EM"
+        };
+
+        let app, auth, db;
+        let files = [], vaultFiles = [];
+        let filteredFiles = [];
+        let vaultSettings = { pin: null, answer: null };
+        let settings = initialSettings;
+        let editContext = 'main', activeNoteContext = 'main';
+        let currentUser = null;
+        let isLoginMode = true;
+        
+        // --- OPTIMIZATION VARS ---
+        let renderCount = 0;
+        const BATCH_SIZE = 50; // Load 50 items at a time
+        let renderObserver;
+        let activeSearch = "";
+
+        // --- HELPERS ---
+        const encryptData = (text, pin) => { if (!pin || !window.CryptoJS) return text; try { return CryptoJS.AES.encrypt(text, String(pin)).toString(); } catch (e) { return text; } };
+        const decryptData = (cipherText, pin) => { if (!pin || !window.CryptoJS) return cipherText; try { const bytes = CryptoJS.AES.decrypt(cipherText, String(pin)); return bytes.toString(CryptoJS.enc.Utf8) || cipherText; } catch (e) { return cipherText; } };
+        function pushModalState(name) { history.pushState({ modal: name }, null, ""); }
+        window.goBack = function() { history.back(); }
+        function showAlert(msg) { document.getElementById('messageText').innerText = msg; document.getElementById('messageModal').classList.add('active'); pushModalState('message'); }
+        
+        function showAuthError(text) {
+            const msg = document.getElementById('authErrorMsg');
+            const box = document.getElementById('authBox');
+            const passInput = document.getElementById('authPassword');
+            msg.innerText = text; msg.classList.add('show');
+            passInput.classList.add('error');
+            box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+        }
+
+        window.addEventListener('popstate', (event) => {
+            const activeModals = document.querySelectorAll('.modal.active');
+            if (activeModals.length > 0) {
+                activeModals.forEach(m => m.classList.remove('active'));
+                document.getElementById('menuDropdown').classList.remove('active');
+                return; 
+            }
+            const vaultView = document.getElementById('vaultView');
+            if (!vaultView.classList.contains('hidden')) {
+                vaultView.classList.add('hidden');
+                document.getElementById('mainApp').style.display = 'block';
+                renderFilesInit(activeSearch); // Re-render main list
+            }
+        });
+
+        // --- INITIALIZATION ---
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            enableIndexedDbPersistence(db).catch(e => console.log("Offline persistence disabled"));
+
+            onAuthStateChanged(auth, (user) => {
+                const authScreen = document.getElementById('authScreen');
+                const loader = document.getElementById('appLoader');
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('userName').textContent = user.email;
+                    authScreen.classList.add('hidden');
+                    loader.classList.remove('hidden');
+                    initDataListeners(user.uid);
+                } else {
+                    currentUser = null;
+                    authScreen.classList.remove('hidden');
+                    document.getElementById('mainApp').classList.add('hidden');
+                    loader.classList.add('hidden');
+                }
+            });
+        } catch(e) { console.error(e); document.getElementById('authScreen').classList.remove('hidden'); }
+
+        function initDataListeners(uid) {
+            // Optimized listener: Don't block UI
+            onSnapshot(collection(db, "users", uid, "files"), (snap) => {
+                files = snap.docs.map(doc => doc.data());
+                requestAnimationFrame(() => {
+                    renderFilesInit(document.getElementById('searchInput').value);
+                    document.getElementById('appLoader').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                });
+            });
+            onSnapshot(collection(db, "users", uid, "vault"), (snap) => {
+                vaultFiles = snap.docs.map(doc => doc.data());
+                // Only render if vault is visible
+                if(!document.getElementById('vaultView').classList.contains('hidden')) {
+                     renderFilesInit("", 'vault');
+                }
+            });
+            onSnapshot(doc(db, "users", uid, "settings", "security"), (s) => {
+                vaultSettings = s.exists() ? s.data() : { pin: null, answer: null };
+            });
+        }
+
+        // --- INFINITE SCROLL & RENDERING ---
+        renderObserver = new IntersectionObserver((entries) => {
+            if(entries[0].isIntersecting) {
+                loadMoreFiles();
+            }
+        }, { rootMargin: '200px' });
+
+        function renderFilesInit(filter = "", ctx = 'main') {
+            activeSearch = filter;
+            const gridId = ctx === 'main' ? 'fileGrid' : 'vaultGrid';
+            const grid = document.getElementById(gridId);
+            while(grid.firstChild) grid.removeChild(grid.firstChild);
+            
+            const source = ctx === 'main' ? files : vaultFiles;
+            if(!filter) {
+                filteredFiles = source;
+            } else {
+                const lower = filter.toLowerCase();
+                filteredFiles = source.filter(x => x.name.toLowerCase().includes(lower));
+            }
+
+            if(filteredFiles.length === 0) {
+                grid.innerHTML = "<div style='grid-column:1/-1;text-align:center;color:var(--text-sub);padding:40px;'>Empty</div>";
+                return;
+            }
+
+            renderCount = 0;
+            if (ctx === 'main') {
+                renderObserver.disconnect();
+                renderObserver.observe(document.getElementById('loadTrigger'));
+            }
+            appendFilesBatch(grid, ctx);
+        }
+
+        function loadMoreFiles() {
+            if(renderCount >= filteredFiles.length) return;
+            const grid = document.getElementById('fileGrid');
+            appendFilesBatch(grid, 'main');
+        }
+
+        function appendFilesBatch(grid, ctx) {
+            const fragment = document.createDocumentFragment();
+            const nextBatch = renderCount + BATCH_SIZE;
+            const limit = Math.min(nextBatch, filteredFiles.length);
+
+            for (let i = renderCount; i < limit; i++) {
+                fragment.appendChild(createCard(filteredFiles[i], ctx));
+            }
+            renderCount = limit;
+            grid.appendChild(fragment);
+        }
+
+        function createCard(f, ctx) {
+            const div = document.createElement('div'); 
+            div.className = 'card';
+            const iconClass = f.type === 'note' ? 'fa-align-left' : (f.type === 'code' ? 'fa-code' : 'fa-link');
+            div.innerHTML = `<i class="fas ${iconClass} card-icon"></i><div class="card-title"></div>`;
+            div.querySelector('.card-title').textContent = f.name;
+            div.onclick = () => window.openFile(f, ctx);
+            div.oncontextmenu = (e) => { e.preventDefault(); openCopyModal(f, ctx); };
+            return div;
+        }
+
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', (e) => { 
+            if(searchTimeout) cancelAnimationFrame(searchTimeout);
+            searchTimeout = requestAnimationFrame(() => {
+                 renderFilesInit(e.target.value, 'main');
+            });
+        });
+
+        // --- VAULT INPUT LOGIC (NEW: English Numbers Only + Auto Submit) ---
+        function handleVaultInput(e, isLogin) {
+            // Force English numbers only (0-9)
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            
+            // Auto Submit when 4 digits reached
+            if (e.target.value.length === 4) {
+                if (isLogin) window.loginVault();
+                else {
+                    // For setup, verify answer is filled
+                    if(document.getElementById('setupAnswer').value) window.setupVault();
+                }
+            }
+        }
+
+        // Attach listeners for both login and setup pins
+        document.getElementById('loginPin').addEventListener('input', (e) => handleVaultInput(e, true));
+        document.getElementById('setupPin').addEventListener('input', (e) => handleVaultInput(e, false));
+
+
+        // --- AUTH ACTIONS ---
+        window.toggleAuthMode = () => {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('authTitle');
+            const mainBtn = document.getElementById('mainAuthBtn');
+            const switchText = document.getElementById('authSwitchText');
+            const switchBtn = document.getElementById('authSwitchBtn');
+            const confirmGroup = document.getElementById('confirmPassGroup'); 
+            
+            window.clearAuthError();
+            document.querySelector('.auth-box').style.opacity = '0.5';
+            
+            setTimeout(() => {
+                if(isLoginMode) {
+                    title.textContent = "Welcome Back";
+                    mainBtn.innerHTML = '<span>Login</span> <i class="fas fa-arrow-right"></i>';
+                    switchText.textContent = "New here?"; switchBtn.textContent = "Create Account";
+                    confirmGroup.classList.add('hidden');
+                } else {
+                    title.textContent = "Create Account";
+                    mainBtn.innerHTML = '<span>Sign Up</span> <i class="fas fa-user-plus"></i>';
+                    switchText.textContent = "Already have an account?"; switchBtn.textContent = "Login";
+                    confirmGroup.classList.remove('hidden');
+                }
+                document.querySelector('.auth-box').style.opacity = '1';
+            }, 200);
+        }
+
+        window.clearAuthError = () => {
+            document.getElementById('authErrorMsg').classList.remove('show');
+            document.getElementById('authPassword').classList.remove('error');
+        }
+        
+        window.togglePasswordVisibility = () => {
+            const i = document.getElementById('authPassword');
+            const ico = document.getElementById('passwordToggle').querySelector('i');
+            i.type = i.type === 'password' ? 'text' : 'password';
+            ico.className = i.type === 'password' ? 'fas fa-eye-slash' : 'fas fa-eye';
+        }
+
+        window.handleAuthAction = async () => {
+            const e = document.getElementById('authEmail').value;
+            const p = document.getElementById('authPassword').value;
+            const cp = document.getElementById('authConfirmPassword').value;
+            const btn = document.getElementById('mainAuthBtn');
+            window.clearAuthError();
+            
+            if(!e || !p) return showAuthError("Please fill all fields");
+            if (!isLoginMode && p !== cp) return showAuthError("Passwords do not match!");
+            
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Please Wait...';
+            btn.disabled = true;
+
+            try {
+                if (isLoginMode) await signInWithEmailAndPassword(auth, e, p);
+                else {
+                    await createUserWithEmailAndPassword(auth, e, p);
+                    btn.classList.add('btn-success'); btn.innerHTML = '<i class="fas fa-check"></i> Successful!';
+                }
+            } catch (err) {
+                btn.innerHTML = originalText; btn.disabled = false;
+                if (err.code === 'auth/email-already-in-use') showAuthError("Email already exists! Please Login.");
+                else if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') showAuthError("Incorrect Password");
+                else if (err.code === 'auth/user-not-found') showAuthError("Account not found");
+                else if (err.code === 'auth/weak-password') showAuthError("Password too short (min 6 chars)");
+                else showAuthError("Error: " + err.message);
+            }
+        };
+
+        window.logout = () => {
+            if(confirm("Are you sure you want to logout?")) signOut(auth).then(()=>location.reload());
+        }
+        
+        window.openForgotPasswordModal = () => {
+            document.getElementById('authScreen').classList.add('hidden');
+            document.getElementById('forgotPasswordModal').classList.add('active');
+            pushModalState('forgotPassword');
+        }
+        
+        window.sendPasswordResetEmail = async () => {
+             const email = document.getElementById('resetEmail').value;
+             try { await sendPasswordResetEmail(auth, email); window.goBack(); document.getElementById('authScreen').classList.remove('hidden'); showAlert("Check your email!"); }
+             catch(e) { showAlert(e.message); }
+        }
+
+        // --- APP LOGIC ---
+        document.getElementById('menuBtn').onclick = (e) => { e.stopPropagation(); document.getElementById('menuDropdown').classList.toggle('active'); };
+        window.onclick = (e) => { if (!e.target.closest('#menuBtn') && !e.target.closest('#menuDropdown')) document.getElementById('menuDropdown').classList.remove('active'); if (e.target.classList.contains('modal')) window.goBack(); };
+
+        window.openFile = (f, ctx) => {
+            let content = f.content;
+            if (ctx === 'vault' && vaultSettings.pin) content = decryptData(f.content, vaultSettings.pin);
+            
+            if (f.type === 'link') window.open(content.startsWith('http')?content:'https://'+content, '_blank');
+            else if (f.type === 'note') {
+                pushModalState(f.type); activeNoteContext = ctx;
+                document.getElementById('noteViewId').value = f.id;
+                document.getElementById('noteViewTitle').value = f.name;
+                document.getElementById('noteViewContent').value = content;
+                document.getElementById('noteViewDate').textContent = f.date || '';
+                document.getElementById('noteModal').classList.add('active');
+            } else {
+                pushModalState(f.type); document.getElementById('runnerModal').classList.add('active');
+                document.getElementById('codeFrame').srcdoc = content;
+            }
+        }
+
+        window.openEditor = (id, ctx) => {
+            document.getElementById('managerModal').classList.remove('active'); pushModalState('editor');
+            editContext = ctx; document.getElementById('fileForm').reset();
+            if (id) {
+                const list = ctx === 'main' ? files : vaultFiles;
+                const f = list.find(x => x.id === id);
+                document.getElementById('editId').value = id;
+                document.getElementById('fileName').value = f.name;
+                let content = f.content;
+                if(ctx === 'vault') content = decryptData(content, vaultSettings.pin);
+                if(f.type === 'link') document.getElementById('fileUrl').value = content;
+                else document.getElementById('fileContent').value = content;
+                window.setType(f.type);
+            } else { document.getElementById('editId').value = ""; window.setType('link'); }
+            document.getElementById('editorModal').classList.add('active');
+        }
+
+        window.setType = (t) => {
+            document.getElementById('fileType').value = t;
+            document.querySelectorAll('.type-btn').forEach(b => { b.classList.remove('active'); if(b.dataset.type===t) b.classList.add('active'); });
+            const box = document.querySelector('#editorModal .modal-box');
+            if(t==='note') box.classList.add('expanded'); else box.classList.remove('expanded');
+            if(t==='link') { document.getElementById('fileUrl').style.display='block'; document.getElementById('fileContent').style.display='none'; }
+            else { document.getElementById('fileUrl').style.display='none'; document.getElementById('fileContent').style.display='block'; }
+        }
+
+        document.getElementById('fileForm').onsubmit = async (e) => {
+            e.preventDefault(); if(!currentUser) return;
+            const name = document.getElementById('fileName').value.trim();
+            const type = document.getElementById('fileType').value;
+            let content = type === 'link' ? document.getElementById('fileUrl').value : document.getElementById('fileContent').value;
+            const id = document.getElementById('editId').value ? Number(document.getElementById('editId').value) : Date.now();
+            
+            const list = editContext === 'main' ? files : vaultFiles;
+            if (list.some(f => f.name.toLowerCase() === name.toLowerCase() && f.id !== id)) return showAlert("Name exists!");
+            
+            if(type==='link' && !content.startsWith('http')) content = 'https://'+content;
+            let date = type==='note' ? new Date().toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '';
+            if (editContext === 'vault' && vaultSettings.pin) content = encryptData(content, vaultSettings.pin);
+
+            try { await setDoc(doc(db, "users", currentUser.uid, editContext==='main'?'files':'vault', String(id)), {id, name, type, content, date}); window.goBack(); }
+            catch (err) { showAlert("Error: " + err.message); }
+        }
+        
+        window.saveAndCloseNote = async () => {
+             const id = Number(document.getElementById('noteViewId').value);
+             const list = activeNoteContext === 'main' ? files : vaultFiles;
+             const f = list.find(x => x.id === id);
+             if(f) {
+                 let content = document.getElementById('noteViewContent').value;
+                 if(activeNoteContext === 'vault' && vaultSettings.pin) content = encryptData(content, vaultSettings.pin);
+                 await setDoc(doc(db, "users", currentUser.uid, activeNoteContext==='main'?'files':'vault', String(id)), {...f, name: document.getElementById('noteViewTitle').value, content});
+                 window.goBack();
+             }
+        }
+
+        // --- MANAGER ---
+        function renderManagerList(c) {
+             const d = document.getElementById('fileList'); 
+             while(d.firstChild) d.removeChild(d.firstChild);
+             const l=c==='main'?files:vaultFiles;
+             if(l.length === 0) d.innerHTML = "<p style='text-align:center;color:var(--text-sub);padding:10px;'>Empty</p>";
+             const frag = document.createDocumentFragment();
+             l.forEach(f=>{
+                const i=document.createElement('div'); 
+                i.style.cssText="padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;";
+                i.innerHTML=`<span style="overflow:hidden;white-space:nowrap;max-width:50%;text-overflow:ellipsis;"></span>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-icon edit-btn" style="background:var(--input-bg);"><i class="fas fa-pen" style="font-size:12px;"></i></button>
+                    <button class="btn-icon move-btn" style="background:var(--input-bg);"><i class="fas ${c==='main'?'fa-lock':'fa-unlock'}" style="font-size:12px;"></i></button>
+                    <button class="btn-icon del-btn" style="background:#fee2e2;color:red;"><i class="fas fa-trash" style="font-size:12px;"></i></button>
+                </div>`;
+                i.querySelector('span').textContent = f.name;
+                i.querySelector('.edit-btn').onclick = (e) => { e.stopPropagation(); window.openEditor(f.id, c); };
+                i.querySelector('.move-btn').onclick = (e) => { e.stopPropagation(); window.moveFile(f.id, c); };
+                i.querySelector('.del-btn').onclick = (e) => { e.stopPropagation(); window.deleteFile(f.id, c); };
+                frag.appendChild(i);
+            });
+            d.appendChild(frag);
+        }
+
+        window.openManager = (c) => { pushModalState('manager'); editContext = c; renderManagerList(c); document.getElementById('managerModal').classList.add('active'); document.getElementById('menuDropdown').classList.remove('active'); }
+
+        window.deleteFile = async (id, c) => {
+            if(confirm("Permanently delete this file?")) {
+                if(!currentUser) return;
+                try {
+                    await deleteDoc(doc(db, "users", currentUser.uid, c === 'main' ? 'files' : 'vault', String(id)));
+                    renderManagerList(c); 
+                } catch(err) { showAlert("Delete Failed"); }
+            }
+        }
+
+        window.moveFile = async (id, fc) => {
+            if(confirm(fc==='main'?"Move to Vault?":"Move to Cloud?")) {
+                const f = (fc==='main'?files:vaultFiles).find(x=>x.id===id);
+                if(f) {
+                    if (fc === 'main' && vaultSettings.pin) f.content = encryptData(f.content, vaultSettings.pin);
+                    else if (fc !== 'main' && vaultSettings.pin) f.content = decryptData(f.content, vaultSettings.pin);
+                    await setDoc(doc(db, "users", currentUser.uid, fc==='main'?'vault':'files', String(id)), f);
+                    await deleteDoc(doc(db, "users", currentUser.uid, fc==='main'?'files':'vault', String(id)));
+                    renderManagerList(fc);
+                }
+            }
+        }
+
+        // --- VAULT ---
+        window.openAuthModal = () => {
+            if(!currentUser) return showAlert("Login first!");
+            pushModalState('auth');
+            ['setupView','loginView'].forEach(i=>document.getElementById(i).classList.add('hidden'));
+            if(!vaultSettings.pin) { document.getElementById('setupPin').value=''; document.getElementById('setupView').classList.remove('hidden'); }
+            else { document.getElementById('loginPin').value=''; document.getElementById('loginView').classList.remove('hidden'); }
+            document.getElementById('authModal').classList.add('active');
+        }
+        
+        window.setupVault = async () => {
+            const p = document.getElementById('setupPin').value, a = document.getElementById('setupAnswer').value;
+            if(!/^\d{4}$/.test(p)||!a) return showAlert("Pin must be 4 digits & Answer required");
+            await setDoc(doc(db, "users", currentUser.uid, "settings", "security"), { pin: p, answer: a });
+            window.goBack(); setTimeout(window.enterVault, 300);
+        }
+
+        window.loginVault = () => {
+            if(document.getElementById('loginPin').value === vaultSettings.pin) { window.goBack(); window.enterVault(); }
+            else {
+                // Slight shake effect on error
+                const box = document.querySelector('#authModal .modal-box');
+                box.style.transform = "translateX(5px)";
+                setTimeout(()=> box.style.transform = "none", 100);
+                document.getElementById('loginPin').value = "";
+            }
+        }
+
+        window.enterVault = () => {
+            history.pushState({ view: 'vault' }, null, "");
+            document.getElementById('mainApp').style.display='none';
+            document.getElementById('vaultView').classList.remove('hidden'); 
+            renderFilesInit("", 'vault');
+        }
+        window.exitVault = () => window.goBack();
+
+        // --- COPY ---
+        function openCopyModal(f, ctx) {
+            let t = f.content; if (ctx === 'vault' && vaultSettings.pin) t = decryptData(t, vaultSettings.pin);
+            document.getElementById('copyContentArea').value = t;
+            document.getElementById('copyModal').classList.add('active'); pushModalState('copy');
+        }
+        window.performCopy = () => {
+            const c = document.getElementById('copyContentArea'); c.select(); c.setSelectionRange(0,99999);
+            try { document.execCommand('copy'); showAlert("Copied!"); } catch(e) {}
+        }
+
+        // --- SETTINGS ---
+        window.toggleTheme = () => { settings.dark = !settings.dark; document.documentElement.classList.toggle('dark-mode'); document.getElementById('themeToggleText').textContent = settings.dark ? 'Light Mode' : 'Dark Mode'; localStorage.setItem('ls_settings', JSON.stringify(settings)); document.getElementById('menuDropdown').classList.remove('active'); }
+        window.setView = (m) => { settings.viewMode = m; document.documentElement.classList.remove('view-grid','view-list'); document.documentElement.classList.add('view-'+m); localStorage.setItem('ls_settings', JSON.stringify(settings)); document.getElementById('menuDropdown').classList.remove('active'); }
+
+        window.setView(settings.viewMode);
+        document.getElementById('themeToggleText').textContent = settings.dark ? 'Light Mode' : 'Dark Mode';
+    </script>
+</body>
+</html>
